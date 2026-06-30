@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダー・バトル・ロイヤル AI</title>
+    <!-- Tailwind CSS for premium look -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for cool icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Mono&family=DotGothic16&family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
+        
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: #0b0f19;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.15) 0, transparent 50%);
+        }
+        .font-mono-custom {
+            font-family: 'Fira Mono', 'DotGothic16', monospace;
+        }
+        /* Custom Neon Box Shadow */
+        .neon-border-player {
+            box-shadow: 0 0 15px rgba(52, 211, 153, 0.2);
+            border: 2px solid rgba(52, 211, 153, 0.4);
+        }
+        .neon-border-enemy {
+            box-shadow: 0 0 15px rgba(248, 113, 113, 0.2);
+            border: 2px solid rgba(248, 113, 113, 0.4);
+        }
+        .neon-border-global {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.15);
+        }
+        /* Shake effect for damage */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        /* Damage flash */
+        @keyframes flash-red {
+            0%, 100% { background-color: rgba(239, 68, 68, 0); }
+            50% { background-color: rgba(239, 68, 68, 0.3); }
+        }
+        .flash-red-active {
+            animation: flash-red 0.5s ease-out;
+        }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col items-center justify-start p-4 md:p-8">
+
+    <!-- Custom Modal for Alerts -->
+    <div id="customModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden transition-all duration-300">
+        <div class="bg-gray-900 border border-indigo-500/40 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl text-center transform scale-95 transition-transform duration-300" id="modalContent">
+            <div class="text-indigo-400 text-4xl mb-3" id="modalIcon">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2 text-white" id="modalTitle">通知</h3>
+            <p class="text-slate-300 text-sm mb-6" id="modalMessage">メッセージがここに入ります。</p>
+            <button onclick="closeModal()" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg hover:shadow-indigo-500/20 transition-all duration-200">
+                了解！
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-2xl bg-gray-900/95 backdrop-blur-md rounded-2xl p-5 md:p-8 border border-gray-800/80 shadow-2xl neon-border-global">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 border-b border-gray-800 pb-4">
+            <div class="text-center md:text-left">
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 flex items-center justify-center md:justify-start gap-2">
+                    <span>📅</span> Calendar Battle AI <span>⚔️</span>
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">君の予定をタスク化＆送信して、強敵AIカレンダーをぶっ倒せ！</p>
+            </div>
+            <!-- API Key Settings Button -->
+            <button onclick="toggleConfig()" class="text-xs py-2 px-3 bg-gray-800 hover:bg-gray-700 text-slate-300 font-bold rounded-lg border border-gray-700 hover:border-indigo-500 transition duration-200 flex items-center gap-1 shrink-0">
+                <i class="fa-solid fa-gears"></i> APIキー設定
+            </button>
+        </header>
+
+        <!-- API Key Config Area (Toggle Drawer) -->
+        <div id="configDrawer" class="hidden bg-gray-950/80 border border-indigo-500/30 rounded-xl p-4 mb-6 transition-all duration-300">
+            <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i class="fa-solid fa-key"></i> Gemini APIキーの設定
+            </h3>
+            <div class="flex gap-2">
+                <input type="password" id="customApiKey" class="flex-1 bg-gray-900 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none placeholder-gray-600" placeholder="AIzaSy... から始まるAPIキーを入力してね">
+                <button onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition duration-200">
+                    キーを保存
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-2">※キーは君のブラウザ（LocalStorage）にのみ安全に保存されるよ。空欄にすると、環境に設定されたキーで動くよ！</p>
+        </div>
+
+        <!-- Enemy Selection Banner -->
+        <div id="enemySelectionArea" class="bg-gray-950/50 rounded-xl p-4 mb-6 border border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="text-3xl p-2 bg-red-500/10 rounded-lg text-red-400" id="currentEnemyEmoji">
+                    😈
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-red-400 tracking-wider uppercase block">対戦中のエネミー</span>
+                    <h2 class="text-lg font-bold text-white" id="currentEnemyName">超多忙なスタートアップCEO</h2>
+                    <p class="text-xs text-slate-400" id="currentEnemyDesc">1分単位でアポを詰め込む。分刻みの攻撃が最大の脅威！</p>
+                </div>
+            </div>
+            <button onclick="changeEnemy()" class="text-xs py-2 px-3 bg-gray-800 hover:bg-gray-700 text-slate-300 font-bold rounded-lg border border-gray-700 hover:border-gray-600 transition duration-200 shrink-0">
+                <i class="fa-solid fa-rotate mr-1"></i> 相手を変える
+            </button>
+        </div>
+
+        <!-- Battle Station -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            
+            <!-- Player Panel -->
+            <div id="playerPanel" class="bg-gray-950/40 rounded-xl p-4 neon-border-player transition-all duration-300">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
+                        <i class="fa-solid fa-user-shield text-emerald-500"></i> あなた (Player)
+                    </span>
+                    <span class="text-xs text-slate-500">ステータス</span>
+                </div>
+                
+                <div class="flex justify-between items-end mb-1">
+                    <span class="text-xs text-slate-400">HP</span>
+                    <span class="text-lg font-bold font-mono-custom text-emerald-400"><span id="playerHp">100</span>/100</span>
+                </div>
+                <div class="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                    <div id="playerHpFill" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 ease-out" style="width: 100%;"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-800/50 text-center">
+                    <div class="bg-emerald-950/20 py-1 rounded border border-emerald-500/10">
+                        <span class="text-[10px] text-slate-400 block">攻撃力</span>
+                        <span class="text-sm font-bold text-emerald-400 font-mono-custom" id="playerAttackVal">--</span>
+                    </div>
+                    <div class="bg-emerald-950/20 py-1 rounded border border-emerald-500/10">
+                        <span class="text-[10px] text-slate-400 block">防御力</span>
+                        <span class="text-sm font-bold text-emerald-400 font-mono-custom" id="playerDefenseVal">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enemy Panel -->
+            <div id="enemyPanel" class="bg-gray-950/40 rounded-xl p-4 neon-border-enemy transition-all duration-300">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-bold text-red-400 flex items-center gap-1.5 text-sm" id="enemyLabelName">
+                        <i class="fa-solid fa-robot text-red-500"></i> AIエネミー
+                    </span>
+                    <span class="text-xs text-slate-500">ステータス</span>
+                </div>
+
+                <div class="flex justify-between items-end mb-1">
+                    <span class="text-xs text-slate-400">HP</span>
+                    <span class="text-lg font-bold font-mono-custom text-red-400"><span id="enemyHp">100</span>/100</span>
+                </div>
+                <div class="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+                    <div id="enemyHpFill" class="h-full bg-gradient-to-r from-red-500 to-rose-400 transition-all duration-500 ease-out" style="width: 100%;"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-800/50 text-center">
+                    <div class="bg-red-950/20 py-1 rounded border border-red-500/10">
+                        <span class="text-[10px] text-slate-400 block">攻撃力</span>
+                        <span class="text-sm font-bold text-red-400 font-mono-custom" id="enemyAttackVal">--</span>
+                    </div>
+                    <div class="bg-red-950/20 py-1 rounded border border-red-500/10">
+                        <span class="text-[10px] text-slate-400 block">防御力</span>
+                        <span class="text-sm font-bold text-red-400 font-mono-custom" id="enemyDefenseVal">--</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Battle Log Console -->
+        <div class="mb-6">
+            <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase block mb-1.5 flex items-center gap-1">
+                <i class="fa-solid fa-terminal"></i> BATTLE LOG & ANALYSIS
+            </span>
+            <div id="log" class="bg-black/90 font-mono-custom p-4 rounded-xl h-40 overflow-y-auto text-xs md:text-sm line-height-relaxed border border-gray-800 text-emerald-400 shadow-inner flex flex-col gap-2">
+                <div class="text-slate-400"><span class="text-indigo-400">[GameMaster]</span> スケジュール・バトル・ロイヤルへようこそ！</div>
+                <div class="text-indigo-400"><span class="text-indigo-300">[GameMaster]</span> 下の「ToDoエディタ」か「テキスト入力」で予定を組んで、ターンを開始しよう！</div>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div id="loading" class="hidden py-4 text-center text-sm font-bold text-indigo-400 animate-pulse flex items-center justify-center gap-2 bg-indigo-950/10 rounded-lg border border-indigo-500/20 mb-4">
+            <i class="fa-solid fa-spinner animate-spin"></i>
+            <span>AIがスケジュールを分析中... 対戦データを計算しているよ！</span>
+        </div>
+
+        <!-- Inputs / ToDo List and Editor Tabs -->
+        <div class="bg-gray-950/70 border border-gray-800 rounded-2xl overflow-hidden p-4 md:p-5">
+            <!-- Tabs Menu -->
+            <div class="flex border-b border-gray-800 mb-4 gap-2">
+                <button id="tabTodoBtn" onclick="switchTab('todo')" class="flex-1 pb-3 text-sm font-bold text-indigo-400 border-b-2 border-indigo-500 transition-all duration-200 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-list-check"></i> ToDoエディタ (推奨)
+                </button>
+                <button id="tabRawBtn" onclick="switchTab('raw')" class="flex-1 pb-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-all duration-200 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-align-left"></i> テキスト直接入力
+                </button>
+            </div>
+
+            <!-- Tab 1: ToDo Editor -->
+            <div id="tabTodo" class="space-y-4">
+                <!-- Task Add Form -->
+                <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-800 flex flex-wrap gap-2 items-center">
+                    <div class="w-24 shrink-0">
+                        <input type="time" id="todoTime" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500" value="08:00">
+                    </div>
+                    <div class="flex-1 min-w-[150px]">
+                        <input type="text" id="todoText" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none placeholder-gray-600 focus:border-indigo-500" placeholder="タスク・予定を入力...">
+                    </div>
+                    <div class="w-32 shrink-0">
+                        <select id="todoTag" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-indigo-300 outline-none focus:border-indigo-500">
+                            <option value="⚔️ 攻撃タスク">⚔️ 攻撃 (仕事/勉強)</option>
+                            <option value="🛡️ 防御タスク">🛡️ 防御 (家事/準備)</option>
+                            <option value="⚡ 特攻タスク">⚡ 特攻 (筋トレ/運動)</option>
+                            <option value="💤 回復タスク">💤 回復 (睡眠/娯楽/休)</option>
+                        </select>
+                    </div>
+                    <button onclick="addTodoItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 ml-auto flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i> 追加
+                    </button>
+                </div>
+
+                <!-- ToDo Items Container -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-400">作成中のToDo・カレンダー予定</span>
+                        <div class="flex gap-2">
+                            <button onclick="loadTemplate('preset1')" class="text-[10px] bg-gray-800 hover:bg-gray-700 text-slate-300 px-2 py-1 rounded border border-gray-700">
+                                プリセット① (超多忙)
+                            </button>
+                            <button onclick="loadTemplate('preset2')" class="text-[10px] bg-gray-800 hover:bg-gray-700 text-slate-300 px-2 py-1 rounded border border-gray-700">
+                                プリセット② (マイペース)
+                            </button>
+                            <button onclick="clearTodo()" class="text-[10px] bg-red-950/20 hover:bg-red-900/30 text-red-400 px-2 py-1 rounded border border-red-900/20">
+                                全削除
+                            </button>
+                        </div>
+                    </div>
+                    <div id="todoList" class="bg-gray-950/50 border border-gray-800 rounded-xl max-h-48 overflow-y-auto p-2 flex flex-col gap-1.5 min-h-[100px] text-xs">
+                        <!-- ToDo Items will be dynamically loaded here -->
+                        <div class="text-slate-600 text-center py-8">タスクが登録されてないよ。上のフォームから予定を追加してね！</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Raw Text Input -->
+            <div id="tabRaw" class="hidden">
+                <label for="scheduleInput" class="text-xs font-bold text-slate-400 block mb-1.5">明日のあなたのスケジュール（手書きフォーマット）</label>
+                <textarea id="scheduleInput" class="w-full h-44 bg-gray-950 border border-gray-800 hover:border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl p-3 text-slate-200 placeholder-slate-600 text-sm resize-none focus:outline-none transition-all duration-200" placeholder="例：&#10;08:00 ジョギングとシャワー&#10;10:00 重要な社内プレゼン会議&#10;14:00 カフェで読書と勉強&#10;20:00 友達と焼き鳥屋で飲み会"></textarea>
+            </div>
+
+            <!-- Action Area -->
+            <div class="flex gap-3 mt-5 pt-4 border-t border-gray-800/80">
+                <button id="resetBtn" onclick="resetGame()" class="py-3 px-4 bg-gray-800 hover:bg-gray-700 text-slate-300 font-bold rounded-xl border border-gray-700 hover:border-gray-600 transition duration-200 flex items-center justify-center gap-1.5 text-sm shrink-0">
+                    <i class="fa-solid fa-rotate-left"></i> リセット
+                </button>
+                <button id="actionBtn" onclick="playTurn()" class="flex-1 py-3 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/20 transition-all duration-200 flex items-center justify-center gap-2 text-sm md:text-base">
+                    <span>このスケジュールでターン実行！</span> <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Instructions / Footer -->
+    <footer class="mt-8 text-center text-slate-500 text-xs space-y-1 max-w-md">
+        <p>© 2026 Calendar Battle Royale. All Rights Reserved.</p>
+        <p>※スケジュールをAI（Gemini 2.5 Flash）が戦闘シミュレートするよ！</p>
+    </footer>
+
+    <script>
+        // API Configuration (Provided by preview environment runtime or Custom user input)
+        let apiKey = ""; 
+
+        // Game State Variables
+        let playerHp = 100;
+        let enemyHp = 100;
+        let chatHistory = [];
+        let currentEnemy = null;
+        let activeTab = 'todo'; // 'todo' or 'raw'
+
+        // ToDo State
+        let todoItems = [
+            { id: 1, time: "08:00", text: "プロテイン補給と朝ヨガ", tag: "⚡ 特攻タスク" },
+            { id: 2, time: "10:00", text: "英会話のオンラインレッスン", tag: "⚔️ 攻撃タスク" },
+            { id: 3, time: "14:00", text: "部屋の片付けと洗濯", tag: "🛡️ 防御タスク" },
+            { id: 4, time: "21:00", text: "ゆっくり映画をみてリラックス", tag: "💤 回復タスク" }
+        ];
+
+        // Predefined AI Enemies list
+        const enemies = [
+            {
+                name: "超多忙なスタートアップCEO",
+                emoji: "😈",
+                description: "分刻みのスケジュールで動く、マルチタスクの怪物。忙しさパラメータがカンストしている。"
+            },
+            {
+                name: "だらだら睡眠を貪るネコ",
+                emoji: "🐱",
+                description: "「13:00 お昼寝、17:00 晩ごはん」のような極限にゆるいスケジュール。脱力系だが侮れない。"
+            },
+            {
+                name: "24時間戦う修羅の筋トレマニア",
+                emoji: "🏋️",
+                description: "朝から晩までプロテイン補給とワークアウト。物理攻撃特化型のスケジュール構成。"
+            },
+            {
+                name: "締切前夜の超人気漫画家",
+                emoji: "✍️",
+                description: "「24時間執筆、睡眠なし、コーヒー10杯」。自傷行為に近いスケジュールで狂気の強さを見せる。"
+            },
+            {
+                name: "悠々自適な世界の旅人",
+                emoji: "✈️",
+                description: "午前中はシュノーケリング、午後は五つ星ホテルでエステ。精神的なゆとりが生み出す最強の盾。"
+            }
+        ];
+
+        // System Instruction generator
+        function getSystemInstruction() {
+            return `
+あなたはカレンダーを活用した対戦ゲーム「スケジュール・バトル・ロイヤル」の冷徹かつユーモアのあるゲームマスター（AI）です。
+今回のゲームでは、プレイヤーは「${currentEnemy.name}」（特徴: ${currentEnemy.description}）というAIエネミーと戦っています。
+
+ユーザーから「明日のスケジュール（予定）」が送られてきます。あなたの任務は以下のステップを厳密に行い、指定された【JSONフォーマットのみ】で返答することです。他の世間話や解説は絶対に出力しないでください。
+
+【ゲームルール】
+1. ユーザーのスケジュールを分析し、「忙しさ」「クリエイティブさ」「肉体的過酷さ」「メンタル充実度」などから、今回のターンの「プレイヤーの攻撃力(10〜40)」と「プレイヤーの防御力(10〜40)」を算出してください。
+2. 同時に、対戦エネミー「${currentEnemy.name}」の架空のスケジュールをあなたがその場で創造し、そこから「エネミーの攻撃力(10〜40)」「エネミーの防御力(10〜40)」を決定してください。
+3. ダメージ計算：
+   - プレイヤーが受けるダメージ = MAX(0, エネミーの攻撃力 - プレイヤーの防御力)
+   - エネミーが受けるダメージ = MAX(0, プレイヤーの攻撃力 - エネミーの防御力)
+   - 計算された結果を playerDamage, enemyDamage に入れてください。
+4. バトル実況ログの作成（重要）：
+   - スケジュールの具体的な内容に突っ込んだ、ユーモア溢れる面白いバトルログ（実況メッセージ）を2〜3文で作成してください。
+   - プレイヤー側のスケジュールのポイントと、エネミー側がどんなスケジュールを繰り出してきたかも交えること。（例：「朝5時から筋トレを詰め込んだあなたのパワー攻撃が炸裂！しかしCEOも『取締役会での詰め腹』スケジュールによる鉄壁のガードでダメージを相殺した！」など）
+
+【重要：返却フォーマット】
+必ず以下のJSON形式の文字列のみを返してください。マークダウンの\`\`\`json などのラッパーも不要です。純粋なJSONオブジェクトのみにしてください。
+
+{
+  "playerAttack": 数値,
+  "playerDefense": 数値,
+  "enemyAttack": 数値,
+  "enemyDefense": 数値,
+  "playerDamage": 数値,
+  "enemyDamage": 数値,
+  "enemySchedule": "AIエネミーが創造した今回のスケジュール（1文程度で要約）",
+  "log": "ここにバトルの実況テキスト"
+}
+`;
+        }
+
+        // Initialize game on load
+        window.onload = function() {
+            // Load saved custom api key
+            const savedKey = localStorage.getItem('custom_gemini_api_key');
+            if (savedKey) {
+                document.getElementById('customApiKey').value = savedKey;
+                apiKey = savedKey;
+            }
+            
+            initEnemy();
+            renderTodoList();
+            resetGame();
+        };
+
+        // Custom API Key operations
+        function toggleConfig() {
+            const drawer = document.getElementById('configDrawer');
+            drawer.classList.toggle('hidden');
+        }
+
+        function saveApiKey() {
+            const userKey = document.getElementById('customApiKey').value.trim();
+            localStorage.setItem('custom_gemini_api_key', userKey);
+            apiKey = userKey;
+            showModal("保存成功", "APIキーをローカルブラウザに保存したよ！これで君のキーで通信ができるよ。");
+            document.getElementById('configDrawer').classList.add('hidden');
+        }
+
+        // Select an enemy randomly
+        function initEnemy() {
+            const randomIndex = Math.floor(Math.random() * enemies.length);
+            currentEnemy = enemies[randomIndex];
+            updateEnemyUI();
+        }
+
+        function updateEnemyUI() {
+            document.getElementById('currentEnemyEmoji').innerText = currentEnemy.emoji;
+            document.getElementById('currentEnemyName').innerText = currentEnemy.name;
+            document.getElementById('currentEnemyDesc').innerText = currentEnemy.description;
+            document.getElementById('enemyLabelName').innerHTML = `<i class="fa-solid fa-robot text-red-500"></i> ${currentEnemy.name}`;
+        }
+
+        // Change enemy manually
+        function changeEnemy() {
+            if (chatHistory.length > 0 && playerHp > 0 && enemyHp > 0) {
+                showModal("確認", "戦闘の途中で相手を変えると、これまでのバトル履歴とHPがリセットされるよ！それでもいい？", () => {
+                    initEnemy();
+                    resetGame();
+                });
+            } else {
+                initEnemy();
+                resetGame();
+            }
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabName) {
+            activeTab = tabName;
+            const tabTodo = document.getElementById('tabTodo');
+            const tabRaw = document.getElementById('tabRaw');
+            const tabTodoBtn = document.getElementById('tabTodoBtn');
+            const tabRawBtn = document.getElementById('tabRawBtn');
+
+            if (tabName === 'todo') {
+                tabTodo.classList.remove('hidden');
+                tabRaw.classList.add('hidden');
+                
+                tabTodoBtn.classList.add('text-indigo-400', 'border-indigo-500');
+                tabTodoBtn.classList.remove('text-slate-500', 'border-transparent');
+                tabRawBtn.classList.remove('text-indigo-400', 'border-indigo-500');
+                tabRawBtn.classList.add('text-slate-500', 'border-transparent');
+            } else {
+                tabTodo.classList.add('hidden');
+                tabRaw.classList.remove('hidden');
+                
+                tabRawBtn.classList.add('text-indigo-400', 'border-indigo-500');
+                tabRawBtn.classList.remove('text-slate-500', 'border-transparent');
+                tabTodoBtn.classList.remove('text-indigo-400', 'border-indigo-500');
+                tabTodoBtn.classList.add('text-slate-500', 'border-transparent');
+
+                // Auto convert current todo to raw text format for convenience
+                document.getElementById('scheduleInput').value = convertTodoToText();
+            }
+        }
+
+        // ToDo List Functions
+        function renderTodoList() {
+            const listContainer = document.getElementById('todoList');
+            if (todoItems.length === 0) {
+                listContainer.innerHTML = '<div class="text-slate-600 text-center py-8">タスクが登録されてないよ。上のフォームから予定を追加してね！</div>';
+                return;
+            }
+
+            // Sort by time
+            todoItems.sort((a, b) => a.time.localeCompare(b.time));
+
+            listContainer.innerHTML = todoItems.map(item => {
+                let badgeColor = "bg-gray-800 text-slate-300";
+                if (item.tag.includes('攻撃')) badgeColor = "bg-red-950/40 text-red-400 border border-red-900/30";
+                if (item.tag.includes('防御')) badgeColor = "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30";
+                if (item.tag.includes('特攻')) badgeColor = "bg-amber-950/40 text-amber-400 border border-amber-900/30";
+                if (item.tag.includes('回復')) badgeColor = "bg-indigo-950/40 text-indigo-400 border border-indigo-900/30";
+
+                return `
+                    <div class="flex items-center justify-between bg-gray-900/80 hover:bg-gray-800/80 p-2.5 rounded-lg border border-gray-800 transition">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="font-mono-custom font-bold text-indigo-400 bg-indigo-950/20 px-1.5 py-0.5 rounded border border-indigo-900/30 shrink-0">${item.time}</span>
+                            <span class="text-slate-200 truncate font-semibold">${item.text}</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[9px] px-2 py-0.5 rounded-full ${badgeColor}">${item.tag}</span>
+                            <button onclick="deleteTodoItem(${item.id})" class="text-slate-500 hover:text-red-400 p-1 transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addTodoItem() {
+            const time = document.getElementById('todoTime').value;
+            const text = document.getElementById('todoText').value.trim();
+            const tag = document.getElementById('todoTag').value;
+
+            if (!text) {
+                showModal("エラー", "予定の内容を入力してね！");
+                return;
+            }
+
+            const newItem = {
+                id: Date.now(),
+                time,
+                text,
+                tag
+            };
+
+            todoItems.push(newItem);
+            document.getElementById('todoText').value = ''; // Reset input
+            renderTodoList();
+        }
+
+        function deleteTodoItem(id) {
+            todoItems = todoItems.filter(item => item.id !== id);
+            renderTodoList();
+        }
+
+        function clearTodo() {
+            todoItems = [];
+            renderTodoList();
+        }
+
+        function convertTodoToText() {
+            if (todoItems.length === 0) return "";
+            todoItems.sort((a, b) => a.time.localeCompare(b.time));
+            return todoItems.map(item => `${item.time} ${item.text} (${item.tag})`).join("\n");
+        }
+
+        function loadTemplate(preset) {
+            if (preset === 'preset1') {
+                todoItems = [
+                    { id: 1, time: "06:00", text: "限界ダッシュトレーニング", tag: "⚡ 特攻タスク" },
+                    { id: 2, time: "08:30", text: "経営戦略企画書作成", tag: "⚔️ 攻撃タスク" },
+                    { id: 3, time: "11:00", text: "社内セキュリティ監査対応", tag: "🛡️ 防御タスク" },
+                    { id: 4, time: "13:00", text: "クライアントとの最重要商談", tag: "⚔️ 攻撃タスク" },
+                    { id: 5, time: "16:30", text: "プログラミング爆速実装", tag: "⚔️ 攻撃タスク" },
+                    { id: 6, time: "20:00", text: "部屋の大掃除・整理整頓", tag: "🛡️ 防御タスク" },
+                    { id: 7, time: "23:30", text: "サウナと速攻快眠", tag: "💤 回復タスク" }
+                ];
+            } else if (preset === 'preset2') {
+                todoItems = [
+                    { id: 1, time: "10:30", text: "遅めの起床とドリップコーヒー", tag: "💤 回復タスク" },
+                    { id: 2, time: "12:00", text: "まったりお菓子作り＆YouTube", tag: "💤 回復タスク" },
+                    { id: 3, time: "15:00", text: "落書き＆お絵かき練習", tag: "🛡️ 防御タスク" },
+                    { id: 4, time: "18:00", text: "スーパーへ買い物＆おかず作り", tag: "🛡️ 防御タスク" },
+                    { id: 5, time: "21:00", text: "ちょっとだけ資格の勉強", tag: "⚔️ 攻撃タスク" }
+                ];
+            }
+            renderTodoList();
+            showModal("テンプレート反映", "プリセットをToDoエディタにロードしたよ！");
+        }
+
+        // Custom Modal Show
+        function showModal(title, msg, onConfirm = null) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = msg;
+            
+            const modal = document.getElementById('customModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+
+            // Confirm action store
+            window.modalConfirmCallback = onConfirm;
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('customModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (window.modalConfirmCallback) {
+                    window.modalConfirmCallback();
+                    window.modalConfirmCallback = null;
+                }
+            }, 150);
+        }
+
+        // Reset the game state
+        function resetGame() {
+            playerHp = 100;
+            enemyHp = 100;
+            chatHistory = [];
+            
+            document.getElementById('playerHp').innerText = playerHp;
+            document.getElementById('enemyHp').innerText = enemyHp;
+            document.getElementById('playerHpFill').style.width = '100%';
+            document.getElementById('enemyHpFill').style.width = '100%';
+
+            document.getElementById('playerAttackVal').innerText = '--';
+            document.getElementById('playerDefenseVal').innerText = '--';
+            document.getElementById('enemyAttackVal').innerText = '--';
+            document.getElementById('enemyDefenseVal').innerText = '--';
+
+            document.getElementById('actionBtn').disabled = false;
+
+            const logPanel = document.getElementById('log');
+            logPanel.innerHTML = `
+                <div class="text-slate-400"><span class="text-indigo-400">[GameMaster]</span> スケジュール・バトル・ロイヤルへようこそ！</div>
+                <div class="text-indigo-400"><span class="text-indigo-300">[GameMaster]</span> 今回の対戦相手は「<b>${currentEnemy.name}</b>」だよ！</div>
+                <div class="text-slate-400"><span class="text-indigo-400">[GameMaster]</span> 準備ができたら戦闘開始ボタンを押してね！</div>
+            `;
+        }
+
+        // Play turn with exponential backoff retry mechanism
+        async function playTurn() {
+            // Determine active input format
+            let schedule = "";
+            if (activeTab === 'todo') {
+                schedule = convertTodoToText();
+            } else {
+                schedule = document.getElementById('scheduleInput').value.trim();
+            }
+
+            if (!schedule) {
+                showModal('スケジュール未入力', '明日どんなスケジュールで過ごすか入力してね！簡単でも大丈夫だよ！');
+                return;
+            }
+
+            // APIキーが入力されているか事前にチェック
+            if (!apiKey || apiKey.trim() === "") {
+                document.getElementById('configDrawer').classList.remove('hidden');
+                showModal('APIキー未設定', 'ゲームをプレイするにはGeminiのAPIキーが必要です。右上の「APIキー設定」ボタンから、有効なAPIキー（AIzaSy...）を入力して保存してください。');
+                return;
+            }
+
+            // Lock inputs and show loading spinner
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('actionBtn').disabled = true;
+
+            // Push player action to history
+            chatHistory.push({ role: "user", parts: [{ text: schedule }] });
+
+            // Using the requested preview model
+            const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const requestBody = {
+                contents: chatHistory,
+                systemInstruction: {
+                    parts: [{ text: getSystemInstruction() }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+
+            // Call API with Exponential Backoff
+            try {
+                const data = await fetchWithRetry(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                }, 5, 1000); // 5 retries, starting at 1s delay
+
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                const aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!aiResponseText) {
+                    throw new Error("AIからの応答データを正しく取得できなかったよ。");
+                }
+
+                // Add to chat history
+                chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
+
+                // Parse game outcome
+                const gameState = JSON.parse(aiResponseText);
+                updateGame(gameState);
+
+            } catch (error) {
+                console.error(error);
+                
+                // APIキーのエラー判定と自動サポート画面展開
+                if (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID") || error.message.includes("key")) {
+                    document.getElementById('configDrawer').classList.remove('hidden');
+                    showModal('APIキーが無効です', '入力されたGemini APIキーが有効ではありません。右上の「APIキー設定」を開き、正しいキー（AIzaSy...から始まる文字列）を再入力して保存してください。');
+                } else {
+                    showModal('通信エラー', 'AIとの通信でエラーが発生しちゃった。APIキーの設定を確認するか、少し時間を置いて再試行してみてね。\n\n詳細: ' + error.message);
+                }
+                
+                // Rollback history since turn failed
+                chatHistory.pop();
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                if (playerHp > 0 && enemyHp > 0) {
+                    document.getElementById('actionBtn').disabled = false;
+                }
+            }
+        }
+
+        // Exponential Backoff helper function
+        async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    const errorDetails = await response.json().catch(() => ({}));
+                    throw new Error(errorDetails.error?.message || `HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                if (retries > 0) {
+                    // Backoff: delays of 1s, 2s, 4s, 8s, 16s...
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchWithRetry(url, options, retries - 1, delay * 2);
+                }
+                throw error;
+            }
+        }
+
+        // Update Game UI and animate damage
+        function updateGame(state) {
+            // Apply damage shaking animation
+            const playerPanel = document.getElementById('playerPanel');
+            const enemyPanel = document.getElementById('enemyPanel');
+            
+            if (state.playerDamage > 0) {
+                playerPanel.classList.add('shake', 'flash-red-active');
+                setTimeout(() => {
+                    playerPanel.classList.remove('shake', 'flash-red-active');
+                }, 500);
+            }
+            if (state.enemyDamage > 0) {
+                enemyPanel.classList.add('shake', 'flash-red-active');
+                setTimeout(() => {
+                    enemyPanel.classList.remove('shake', 'flash-red-active');
+                }, 500);
+            }
+
+            // Health calculation
+            playerHp = Math.max(0, playerHp - state.playerDamage);
+            enemyHp = Math.max(0, enemyHp - state.enemyDamage);
+
+            // Reflect on UI
+            document.getElementById('playerHp').innerText = playerHp;
+            document.getElementById('enemyHp').innerText = enemyHp;
+            document.getElementById('playerHpFill').style.width = playerHp + '%';
+            document.getElementById('enemyHpFill').style.width = enemyHp + '%';
+
+            // Change health bar color if critical
+            updateBarColor('playerHpFill', playerHp);
+            updateBarColor('enemyHpFill', enemyHp);
+
+            // Set stats values
+            document.getElementById('playerAttackVal').innerText = state.playerAttack;
+            document.getElementById('playerDefenseVal').innerText = state.playerDefense;
+            document.getElementById('enemyAttackVal').innerText = state.enemyAttack;
+            document.getElementById('enemyDefenseVal').innerText = state.enemyDefense;
+
+            // Log output preparation
+            const logPanel = document.getElementById('log');
+            
+            let logHTML = `
+                <div class="border-t border-dashed border-gray-800 my-2 pt-2"></div>
+                <div class="text-amber-400 font-bold"><i class="fa-solid fa-gamepad"></i> --- ターン結果 ---</div>
+                <div class="text-rose-400 font-semibold"><i class="fa-solid fa-bullseye"></i> エネミーの予定: ${state.enemySchedule || "多忙を極めるルーティン"}</div>
+                <div class="text-slate-200 mt-1 leading-relaxed"><i class="fa-solid fa-microphone-lines"></i> ${state.log}</div>
+                <div class="grid grid-cols-2 gap-2 mt-1.5 text-xs">
+                    <span class="text-emerald-400"><i class="fa-solid fa-shield-halved"></i> 君の被ダメ: -${state.playerDamage} HP</span>
+                    <span class="text-red-400"><i class="fa-solid fa-swords"></i> 相手の被ダメ: -${state.enemyDamage} HP</span>
+                </div>
+            `;
+
+            // Win / Lose verification
+            if (playerHp <= 0 && enemyHp <= 0) {
+                logHTML += `<div class="text-yellow-400 font-extrabold text-center text-sm mt-3 border border-yellow-500/30 p-2 bg-yellow-950/20 rounded"><i class="fa-solid fa-skull-crossbones animate-bounce"></i> 相打ち！お互いに限界を超えた過密日程であった...！</div>`;
+                document.getElementById('actionBtn').disabled = true;
+            } else if (enemyHp <= 0) {
+                logHTML += `<div class="text-emerald-400 font-extrabold text-center text-sm mt-3 border border-emerald-500/30 p-2 bg-emerald-950/20 rounded"><i class="fa-solid fa-trophy animate-bounce"></i> 勝利！相手のタスクを圧倒した！時間管理能力の極みだね！</div>`;
+                document.getElementById('actionBtn').disabled = true;
+            } else if (playerHp <= 0) {
+                logHTML += `<div class="text-red-400 font-extrabold text-center text-sm mt-3 border border-red-500/30 p-2 bg-red-950/20 rounded"><i class="fa-solid fa-face-dizzy animate-bounce"></i> 敗北... 予定がパンクして、体が追いつかなくなっちゃった。</div>`;
+                document.getElementById('actionBtn').disabled = true;
+            }
+
+            logPanel.insertAdjacentHTML('beforeend', logHTML);
+            
+            // Auto scroll to bottom
+            setTimeout(() => {
+                logPanel.scrollTop = logPanel.scrollHeight;
+            }, 50);
+        }
+
+        // Update color class of HP bars dynamically based on HP percentage
+        function updateBarColor(elementId, hp) {
+            const bar = document.getElementById(elementId);
+            if (hp <= 25) {
+                bar.className = "h-full bg-gradient-to-r from-red-600 to-rose-500 transition-all duration-500 ease-out";
+            } else if (hp <= 50) {
+                bar.className = "h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500 ease-out";
+            } else {
+                if (elementId.includes('player')) {
+                    bar.className = "h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 ease-out";
+                } else {
+                    bar.className = "h-full bg-gradient-to-r from-red-500 to-rose-400 transition-all duration-500 ease-out";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
