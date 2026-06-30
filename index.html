@@ -106,12 +106,33 @@
                 <i class="fa-solid fa-key"></i> Gemini APIキーの設定
             </h3>
             <div class="flex gap-2">
-                <input type="password" id="customApiKey" class="flex-1 bg-gray-900 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none placeholder-gray-600" placeholder="AIzaSy... から始まるAPIキーを入力してね">
+                <input type="password" id="customApiKey" class="flex-1 bg-gray-900 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none placeholder-gray-600" placeholder="空欄なら自動APIキーを使用するよ">
                 <button onclick="saveApiKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition duration-200">
                     キーを保存
                 </button>
             </div>
-            <p class="text-[10px] text-slate-500 mt-2">※キーは君のブラウザ（LocalStorage）にのみ安全に保存されるよ。空欄にすると、環境に設定されたキーで動くよ！</p>
+            <p class="text-[10px] text-slate-500 mt-2">※独自のキーを使いたいときだけ入力してね。空欄にすると、Canvasが自動提供するキーで動くからそのままで大丈夫だよ！</p>
+        </div>
+
+        <!-- Real-world Weekday Bonus Panel -->
+        <div id="weekdayBonusArea" class="bg-indigo-950/30 rounded-xl p-3.5 mb-6 border border-indigo-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+            <div class="flex items-center gap-3">
+                <div class="text-3xl p-2 bg-indigo-500/10 rounded-lg text-indigo-400 flex items-center justify-center w-12 h-12 shrink-0" id="weekdayEmoji">
+                    📅
+                </div>
+                <div class="text-center sm:text-left">
+                    <span class="text-[10px] text-indigo-400 font-bold block uppercase tracking-wider">現実世界の曜日補正</span>
+                    <h3 class="text-base font-bold text-white flex items-center gap-1.5 justify-center sm:justify-start">
+                        今日: <span id="weekdayName">火曜日</span>
+                    </h3>
+                </div>
+            </div>
+            <div class="text-center sm:text-right shrink-0">
+                <span class="text-[10px] text-slate-400 block font-bold mb-1">現在の曜日ボーナス / デバフ</span>
+                <span class="text-xs font-semibold px-3 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700 block sm:inline-block" id="weekdayEffect">
+                    通常運転（補正なし）
+                </span>
+            </div>
         </div>
 
         <!-- Enemy Selection Banner -->
@@ -225,21 +246,13 @@
 
             <!-- Tab 1: ToDo Editor -->
             <div id="tabTodo" class="space-y-4">
-                <!-- Task Add Form -->
+                <!-- Task Add Form (Now without Tag dropdown since AI evaluates it!) -->
                 <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-800 flex flex-wrap gap-2 items-center">
                     <div class="w-24 shrink-0">
                         <input type="time" id="todoTime" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500" value="08:00">
                     </div>
                     <div class="flex-1 min-w-[150px]">
                         <input type="text" id="todoText" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none placeholder-gray-600 focus:border-indigo-500" placeholder="タスク・予定を入力...">
-                    </div>
-                    <div class="w-32 shrink-0">
-                        <select id="todoTag" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-indigo-300 outline-none focus:border-indigo-500">
-                            <option value="⚔️ 攻撃タスク">⚔️ 攻撃 (仕事/勉強)</option>
-                            <option value="🛡️ 防御タスク">🛡️ 防御 (家事/準備)</option>
-                            <option value="⚡ 特攻タスク">⚡ 特攻 (筋トレ/運動)</option>
-                            <option value="💤 回復タスク">💤 回復 (睡眠/娯楽/休)</option>
-                        </select>
                     </div>
                     <button onclick="addTodoItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition shrink-0 ml-auto flex items-center gap-1">
                         <i class="fa-solid fa-plus"></i> 追加
@@ -261,6 +274,11 @@
                                 全削除
                             </button>
                         </div>
+                    </div>
+                    <!-- Warning / Tip Alert inside Todo Editor -->
+                    <div class="text-[10px] bg-slate-900 border border-slate-800 p-2.5 rounded-lg mb-2 text-slate-400 flex items-start gap-1.5">
+                        <i class="fa-solid fa-circle-info text-indigo-400 mt-0.5 shrink-0"></i>
+                        <span>タスクの種類（攻撃/防御/回復/特攻）は、AIがスケジュール内容から自動判別します！また深夜（24:00〜05:00）に過度なタスクを配置すると夜更かしデバフ（自傷ダメージなど）のリスクが発生します。</span>
                     </div>
                     <div id="todoList" class="bg-gray-950/50 border border-gray-800 rounded-xl max-h-48 overflow-y-auto p-2 flex flex-col gap-1.5 min-h-[100px] text-xs">
                         <!-- ToDo Items will be dynamically loaded here -->
@@ -295,8 +313,8 @@
     </footer>
 
     <script>
-        // API Configuration (Provided by preview environment runtime or Custom user input)
-        let apiKey = ""; 
+        // API Configuration (Always set const apiKey = "" - The execution environment provides this automatically)
+        const apiKey = ""; 
 
         // Game State Variables
         let playerHp = 100;
@@ -305,12 +323,12 @@
         let currentEnemy = null;
         let activeTab = 'todo'; // 'todo' or 'raw'
 
-        // ToDo State
+        // ToDo State (Now items don't have hardcoded tags - AI classifies them!)
         let todoItems = [
-            { id: 1, time: "08:00", text: "プロテイン補給と朝ヨガ", tag: "⚡ 特攻タスク" },
-            { id: 2, time: "10:00", text: "英会話のオンラインレッスン", tag: "⚔️ 攻撃タスク" },
-            { id: 3, time: "14:00", text: "部屋の片付けと洗濯", tag: "🛡️ 防御タスク" },
-            { id: 4, time: "21:00", text: "ゆっくり映画をみてリラックス", tag: "💤 回復タスク" }
+            { id: 1, time: "08:00", text: "プロテイン補給と朝ヨガ" },
+            { id: 2, time: "10:00", text: "英会話のオンラインレッスン" },
+            { id: 3, time: "14:00", text: "部屋の片付けと洗濯" },
+            { id: 4, time: "21:00", text: "ゆっくり映画をみてリラックス" }
         ];
 
         // Predefined AI Enemies list
@@ -318,7 +336,7 @@
             {
                 name: "超多忙なスタートアップCEO",
                 emoji: "😈",
-                description: "分刻みのスケジュールで動く、マルチタスクの怪物。忙しさパラメータがカンストしている。"
+                description: "1分単位でアポを詰め込む、マルチタスクの怪物。忙しさパラメータがカンストしている。"
             },
             {
                 name: "だらだら睡眠を貪るネコ",
@@ -344,22 +362,43 @@
 
         // System Instruction generator
         function getSystemInstruction() {
+            const today = new Date();
+            const dayNames = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+            const currentDayOfWeek = dayNames[today.getDay()];
+
             return `
 あなたはカレンダーを活用した対戦ゲーム「スケジュール・バトル・ロイヤル」の冷徹かつユーモアのあるゲームマスター（AI）です。
 今回のゲームでは、プレイヤーは「${currentEnemy.name}」（特徴: ${currentEnemy.description}）というAIエネミーと戦っています。
 
-ユーザーから「明日のスケジュール（予定）」が送られてきます。あなたの任務は以下のステップを厳密に行い、指定された【JSONフォーマットのみ】で返答することです。他の世間話や解説は絶対に出力しないでください。
+ユーザーから送られてくる「明日のスケジュール」を以下のルールに基づいて分析し、必ず指定された【JSONフォーマットのみ】で返答してください。他の会話やマークダウン等のラッパーは一切出力しないでください。
 
-【ゲームルール】
-1. ユーザーのスケジュールを分析し、「忙しさ」「クリエイティブさ」「肉体的過酷さ」「メンタル充実度」などから、今回のターンの「プレイヤーの攻撃力(10〜40)」と「プレイヤーの防御力(10〜40)」を算出してください。
-2. 同時に、対戦エネミー「${currentEnemy.name}」の架空のスケジュールをあなたがその場で創造し、そこから「エネミーの攻撃力(10〜40)」「エネミーの防御力(10〜40)」を決定してください。
-3. ダメージ計算：
-   - プレイヤーが受けるダメージ = MAX(0, エネミーの攻撃力 - プレイヤーの防御力)
-   - エネミーが受けるダメージ = MAX(0, プレイヤーの攻撃力 - エネミーの防御力)
-   - 計算された結果を playerDamage, enemyDamage に入れてください。
-4. バトル実況ログの作成（重要）：
-   - スケジュールの具体的な内容に突っ込んだ、ユーモア溢れる面白いバトルログ（実況メッセージ）を2〜3文で作成してください。
-   - プレイヤー側のスケジュールのポイントと、エネミー側がどんなスケジュールを繰り出してきたかも交えること。（例：「朝5時から筋トレを詰め込んだあなたのパワー攻撃が炸裂！しかしCEOも『取締役会での詰め腹』スケジュールによる鉄壁のガードでダメージを相殺した！」など）
+【タスク自動分類】
+スケジュール内の各予定を、あなたが賢く自動的に分類してください。
+- ⚔️ 攻撃 (仕事、勉強、プレゼン、能動的作業)
+- 🛡️ 防御 (掃除、買い物、家事、準備、整理整頓)
+- ⚡ 特攻 (筋トレ、ランニング、高負荷運動、ハードワーク)
+- 💤 回復 (睡眠、入浴、ゲーム、映画鑑賞、休息、食事、飲み会)
+
+【現実世界 曜日ステータス補正】
+プレイヤー側の計算結果（攻撃力・防御力）に対して、現実世界の曜日が「${currentDayOfWeek}」であることを考慮した補正を厳格に適用してください：
+1. 「月曜日（憂鬱）」: プレイヤーの算出した攻撃力(playerAttack)を通常算出から -5〜10 減少させてください。実況ログでも月曜の憂鬱感に言及してください。
+2. 「金曜日（華金）」: プレイヤーの攻撃力(playerAttack)を1.5倍に超大幅パワーアップしてください！実況でも「華金ボーナス！」と盛り上げてください。
+3. 「土曜日」または「日曜日」（休日）: プレイヤーの防御力(playerDefense)を1.5倍にアップしてください。ただし、仕事・勉強・タスクなどの攻撃用行動をしても、その効果（攻撃力）が極端に低く計算されます。
+4. 「火曜日」「水曜日」「木曜日」（通常日）: 特別な補正はありません。
+
+【深夜ペナルティ（夜更かしリスク）】
+深夜帯（24:00〜05:00 または 00:00〜05:00）に、もし「睡眠」や「入浴」などの純粋な回復目的以外のタスク（仕事、過剰なゲーム、勉強、運動、重い活動など）を2つ以上、あるいは長時間詰め込んでいる場合、過酷な夜更かしペナルティを課してください。
+- ペナルティ内容：プレイヤーの防御力(playerDefense)を極端に低く（例えば5以下に）するか、あるいは「徹夜の自傷ダメージ」として、プレイヤーが受ける最終被ダメージ(playerDamage)にペナルティダメージ(+10〜25)を直接上乗せしてください。
+- 実況ログで、その深夜のタスクの危険性と不健康さを厳しく、または面白おかしく指摘すること。
+
+【ゲームバランス計算】
+1. ベースステータス算出:
+   - スケジュールの充実度、時間密度、バランスから、今回のターンの「プレイヤーの攻撃力(10〜40)」と「プレイヤーの防御力(10〜40)」を割り出し、曜日補正・深夜デバフを適用。
+2. エネミーの行動決定:
+   - あなたの頭の中で、対戦エネミー「${currentEnemy.name}」の今回の架空スケジュールを1行程度で創造し、そこから「エネミーの攻撃力(10〜40)」「エネミーの防御力(10〜40)」を決定します。
+3. 被ダメージ決定:
+   - playerDamage = MAX(0, エネミーの攻撃力 - プレイヤーの防御力) + (深夜ペナルティがあれば加算)
+   - enemyDamage = MAX(0, プレイヤーの攻撃力 - エネミーの防御力)
 
 【重要：返却フォーマット】
 必ず以下のJSON形式の文字列のみを返してください。マークダウンの\`\`\`json などのラッパーも不要です。純粋なJSONオブジェクトのみにしてください。
@@ -383,10 +422,10 @@
             const savedKey = localStorage.getItem('custom_gemini_api_key');
             if (savedKey) {
                 document.getElementById('customApiKey').value = savedKey;
-                apiKey = savedKey;
             }
             
             initEnemy();
+            updateWeekdayUI();
             renderTodoList();
             resetGame();
         };
@@ -397,12 +436,49 @@
             drawer.classList.toggle('hidden');
         }
 
+        // Save custom key or clear it to use system default
         function saveApiKey() {
             const userKey = document.getElementById('customApiKey').value.trim();
-            localStorage.setItem('custom_gemini_api_key', userKey);
-            apiKey = userKey;
-            showModal("保存成功", "APIキーをローカルブラウザに保存したよ！これで君のキーで通信ができるよ。");
+            if (userKey === "") {
+                localStorage.removeItem('custom_gemini_api_key');
+                showModal("リセット完了", "カスタムAPIキーを消去したよ！自動設定されたシステム専用のAPIキーを使用するね。");
+            } else {
+                localStorage.setItem('custom_gemini_api_key', userKey);
+                showModal("保存成功", "APIキーをローカルブラウザに保存したよ！これで設定されたキーで通信するよ。");
+            }
             document.getElementById('configDrawer').classList.add('hidden');
+        }
+
+        // Update Weekday UI with current day bonus explanation
+        function updateWeekdayUI() {
+            const today = new Date();
+            const dayNames = ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"];
+            const dayOfWeekNum = today.getDay();
+            const dayOfWeekStr = dayNames[dayOfWeekNum];
+            
+            let emoji = "📅";
+            let effectText = "通常運転（ステータス補正なし）";
+            let effectClass = "bg-gray-800 text-slate-300 border-gray-700";
+            
+            if (dayOfWeekNum === 1) { // Monday
+                emoji = "😢";
+                effectText = "月曜の憂鬱：全攻撃力が 5～10 低下...";
+                effectClass = "bg-blue-950/50 text-blue-400 border-blue-900/30 font-bold";
+            } else if (dayOfWeekNum === 5) { // Friday
+                emoji = "🔥";
+                effectText = "華金バースト：プレイヤーの攻撃力が1.5倍に超アップ！";
+                effectClass = "bg-amber-950/50 text-amber-400 border-amber-900/30 font-bold animate-pulse";
+            } else if (dayOfWeekNum === 0 || dayOfWeekNum === 6) { // Sat, Sun
+                emoji = "🛡️";
+                effectText = "休日防衛：プレイヤー防御力1.5倍！ (仕事系の攻撃力は激減)";
+                effectClass = "bg-emerald-950/50 text-emerald-400 border-emerald-900/30 font-bold";
+            }
+            
+            document.getElementById('weekdayEmoji').innerText = emoji;
+            document.getElementById('weekdayName').innerText = dayOfWeekStr;
+            const effectEl = document.getElementById('weekdayEffect');
+            effectEl.innerText = effectText;
+            effectEl.className = "text-xs font-semibold px-2.5 py-1 rounded border " + effectClass;
         }
 
         // Select an enemy randomly
@@ -462,7 +538,7 @@
             }
         }
 
-        // ToDo List Functions
+        // ToDo List Functions (No tags saved in the array now, simplified data structure)
         function renderTodoList() {
             const listContainer = document.getElementById('todoList');
             if (todoItems.length === 0) {
@@ -474,20 +550,19 @@
             todoItems.sort((a, b) => a.time.localeCompare(b.time));
 
             listContainer.innerHTML = todoItems.map(item => {
-                let badgeColor = "bg-gray-800 text-slate-300";
-                if (item.tag.includes('攻撃')) badgeColor = "bg-red-950/40 text-red-400 border border-red-900/30";
-                if (item.tag.includes('防御')) badgeColor = "bg-emerald-950/40 text-emerald-400 border border-emerald-900/30";
-                if (item.tag.includes('特攻')) badgeColor = "bg-amber-950/40 text-amber-400 border border-amber-900/30";
-                if (item.tag.includes('回復')) badgeColor = "bg-indigo-950/40 text-indigo-400 border border-indigo-900/30";
+                // Check if the task falls under midnight hours (24:00〜05:00 / 00:00〜05:00) to highlight risk visually
+                const hour = parseInt(item.time.split(':')[0]);
+                const isMidnightRisk = (hour >= 0 && hour < 5);
+                const midnightBadge = isMidnightRisk ? `<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-950/60 text-red-400 border border-red-900/40 font-bold ml-2 animate-pulse"><i class="fa-solid fa-moon"></i> 深夜夜更かしリスク</span>` : '';
 
                 return `
                     <div class="flex items-center justify-between bg-gray-900/80 hover:bg-gray-800/80 p-2.5 rounded-lg border border-gray-800 transition">
                         <div class="flex items-center gap-3 min-w-0">
                             <span class="font-mono-custom font-bold text-indigo-400 bg-indigo-950/20 px-1.5 py-0.5 rounded border border-indigo-900/30 shrink-0">${item.time}</span>
                             <span class="text-slate-200 truncate font-semibold">${item.text}</span>
+                            ${midnightBadge}
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-[9px] px-2 py-0.5 rounded-full ${badgeColor}">${item.tag}</span>
                             <button onclick="deleteTodoItem(${item.id})" class="text-slate-500 hover:text-red-400 p-1 transition">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
@@ -500,7 +575,6 @@
         function addTodoItem() {
             const time = document.getElementById('todoTime').value;
             const text = document.getElementById('todoText').value.trim();
-            const tag = document.getElementById('todoTag').value;
 
             if (!text) {
                 showModal("エラー", "予定の内容を入力してね！");
@@ -510,8 +584,7 @@
             const newItem = {
                 id: Date.now(),
                 time,
-                text,
-                tag
+                text
             };
 
             todoItems.push(newItem);
@@ -532,31 +605,32 @@
         function convertTodoToText() {
             if (todoItems.length === 0) return "";
             todoItems.sort((a, b) => a.time.localeCompare(b.time));
-            return todoItems.map(item => `${item.time} ${item.text} (${item.tag})`).join("\n");
+            return todoItems.map(item => `${item.time} ${item.text}`).join("\n");
         }
 
         function loadTemplate(preset) {
             if (preset === 'preset1') {
                 todoItems = [
-                    { id: 1, time: "06:00", text: "限界ダッシュトレーニング", tag: "⚡ 特攻タスク" },
-                    { id: 2, time: "08:30", text: "経営戦略企画書作成", tag: "⚔️ 攻撃タスク" },
-                    { id: 3, time: "11:00", text: "社内セキュリティ監査対応", tag: "🛡️ 防御タスク" },
-                    { id: 4, time: "13:00", text: "クライアントとの最重要商談", tag: "⚔️ 攻撃タスク" },
-                    { id: 5, time: "16:30", text: "プログラミング爆速実装", tag: "⚔️ 攻撃タスク" },
-                    { id: 6, time: "20:00", text: "部屋の大掃除・整理整頓", tag: "🛡️ 防御タスク" },
-                    { id: 7, time: "23:30", text: "サウナと速攻快眠", tag: "💤 回復タスク" }
+                    { id: 1, time: "06:00", text: "限界ダッシュトレーニングと水浴び" },
+                    { id: 2, time: "08:30", text: "経営戦略企画書を爆速作成" },
+                    { id: 3, time: "11:00", text: "社内セキュリティの超厳重監査対応" },
+                    { id: 4, time: "13:00", text: "競合に勝つための最重要オンライン商談" },
+                    { id: 5, time: "16:30", text: "プログラムをバグなしで爆速実装" },
+                    { id: 6, time: "20:00", text: "部屋の大掃除・整理整頓と消毒" },
+                    { id: 7, time: "23:30", text: "サウナと冷水シャワーで快眠準備" },
+                    { id: 8, time: "01:30", text: "深夜の資格勉強（※夜更かしペナルティのリスクあり！）" }
                 ];
             } else if (preset === 'preset2') {
                 todoItems = [
-                    { id: 1, time: "10:30", text: "遅めの起床とドリップコーヒー", tag: "💤 回復タスク" },
-                    { id: 2, time: "12:00", text: "まったりお菓子作り＆YouTube", tag: "💤 回復タスク" },
-                    { id: 3, time: "15:00", text: "落書き＆お絵かき練習", tag: "🛡️ 防御タスク" },
-                    { id: 4, time: "18:00", text: "スーパーへ買い物＆おかず作り", tag: "🛡️ 防御タスク" },
-                    { id: 5, time: "21:00", text: "ちょっとだけ資格の勉強", tag: "⚔️ 攻撃タスク" }
+                    { id: 1, time: "10:30", text: "遅めの起床、お腹いっぱいお昼寝" },
+                    { id: 2, time: "12:00", text: "お菓子作りの練習をして友達に共有" },
+                    { id: 3, time: "15:00", text: "iPadでイラストと落書きの練習" },
+                    { id: 4, time: "18:00", text: "スーパーで買い出しをしてヘルシーなお惣菜作り" },
+                    { id: 5, time: "21:00", text: "明日用のちょっとだけ資格の復習" }
                 ];
             }
             renderTodoList();
-            showModal("テンプレート反映", "プリセットをToDoエディタにロードしたよ！");
+            showModal("テンプレート反映", "曜日補正や深夜帯を体験できるプリセットをロードしたよ！");
         }
 
         // Custom Modal Show
@@ -614,7 +688,7 @@
             logPanel.innerHTML = `
                 <div class="text-slate-400"><span class="text-indigo-400">[GameMaster]</span> スケジュール・バトル・ロイヤルへようこそ！</div>
                 <div class="text-indigo-400"><span class="text-indigo-300">[GameMaster]</span> 今回の対戦相手は「<b>${currentEnemy.name}</b>」だよ！</div>
-                <div class="text-slate-400"><span class="text-indigo-400">[GameMaster]</span> 準備ができたら戦闘開始ボタンを押してね！</div>
+                <div class="text-slate-400"><span class="text-indigo-400">[GameMaster]</span> 下の「ToDoエディタ」か「テキスト入力」で予定を組んで、ターンを開始しよう！</div>
             `;
         }
 
@@ -633,13 +707,6 @@
                 return;
             }
 
-            // APIキーが入力されているか事前にチェック
-            if (!apiKey || apiKey.trim() === "") {
-                document.getElementById('configDrawer').classList.remove('hidden');
-                showModal('APIキー未設定', 'ゲームをプレイするにはGeminiのAPIキーが必要です。右上の「APIキー設定」ボタンから、有効なAPIキー（AIzaSy...）を入力して保存してください。');
-                return;
-            }
-
             // Lock inputs and show loading spinner
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('actionBtn').disabled = true;
@@ -647,8 +714,12 @@
             // Push player action to history
             chatHistory.push({ role: "user", parts: [{ text: schedule }] });
 
+            // Use custom saved key if configured, otherwise use the automatically provided environment apiKey
+            const savedKey = localStorage.getItem('custom_gemini_api_key');
+            const activeKey = (savedKey && savedKey.trim() !== "") ? savedKey : apiKey;
+
             // Using the requested preview model
-            const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeKey}`;
             
             const requestBody = {
                 contents: chatHistory,
@@ -687,12 +758,12 @@
             } catch (error) {
                 console.error(error);
                 
-                // APIキーのエラー判定と自動サポート画面展開
+                // Detailed key error checking
                 if (error.message.includes("API key not valid") || error.message.includes("API_KEY_INVALID") || error.message.includes("key")) {
                     document.getElementById('configDrawer').classList.remove('hidden');
-                    showModal('APIキーが無効です', '入力されたGemini APIキーが有効ではありません。右上の「APIキー設定」を開き、正しいキー（AIzaSy...から始まる文字列）を再入力して保存してください。');
+                    showModal('APIキーが無効です', '入力されたカスタムAPIキーが有効ではありません。キー設定の中身を消去して空欄にするか、正しいキー（AIzaSy...）を再入力してね！');
                 } else {
-                    showModal('通信エラー', 'AIとの通信でエラーが発生しちゃった。APIキーの設定を確認するか、少し時間を置いて再試行してみてね。\n\n詳細: ' + error.message);
+                    showModal('通信エラー', 'AIとの通信でエラーが発生しちゃった。少し時間を置いて再試行してみてね。\n\n詳細: ' + error.message);
                 }
                 
                 // Rollback history since turn failed
